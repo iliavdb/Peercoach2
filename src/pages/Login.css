@@ -1,0 +1,124 @@
+
+/* Algemene pagina */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #f8f7ff, #eef0ff, #fdfcff);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Inlogkaart */
+.login-form {
+  width: 100%;
+  max-width: 360px;
+  padding: 38px 32px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e8e7f5;
+  border-radius: 22px;
+  box-shadow: 0 15px 45px rgba(79, 70, 160, 0.10);
+}
+
+/* Titel */
+.login-form h1 {
+  margin: 0 0 30px;
+  color: #211d3b;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+  text-align: center;
+}
+
+/* Labels */
+.login-form label {
+  display: block;
+  margin-bottom: 9px;
+  color: #55516f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* Invoervelden */
+.login-form input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-bottom: 23px;
+  padding: 0 15px;
+  box-sizing: border-box;
+  border: 1px solid #deddf0;
+  border-radius: 11px;
+  outline: none;
+  background-color: #fcfcff;
+  color: #272342;
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color 0.25s, box-shadow 0.25s,
+    background-color 0.25s;
+}
+
+/* Placeholdertekst */
+.login-form input::placeholder {
+  color: #a5a2bb;
+}
+
+/* Effect wanneer je in een veld klikt */
+.login-form input:focus {
+  border-color: #7161f3;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(113, 97, 243, 0.12);
+}
+
+/* Inlogknop */
+.login-form button {
+  width: 100%;
+  height: 48px;
+  margin-top: 3px;
+  border: none;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #7665f5, #5945df);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 7px 18px rgba(101, 81, 230, 0.23);
+  transition: transform 0.2s, box-shadow 0.2s,
+    background 0.2s;
+}
+
+/* Hover-effect op de knop */
+.login-form button:hover {
+  background: linear-gradient(135deg, #6653eb, #4935cc);
+  box-shadow: 0 10px 24px rgba(101, 81, 230, 0.30);
+  transform: translateY(-2px);
+}
+
+/* Wanneer je op de knop drukt */
+.login-form button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(101, 81, 230, 0.20);
+}
+
+/* Mobiele weergave */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 18px;
+  }
+
+  .login-form {
+    max-width: 100%;
+    padding: 30px 24px;
+    border-radius: 18px;
+  }
+
+  .login-form h1 {
+    font-size: 25px;
+  }
+}
