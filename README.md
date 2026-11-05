@@ -1,16 +1,21 @@
-# React + Vite
+# PeerCoach
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PeerCoach is de plek waar studenten van Techniek College Rotterdam elkaar helpen en samen verder komen. De applicatie is gebouwd met React, JSX en Vite.
 
-Currently, two official plugins are available:
+## Lokaal starten
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Gebruik de Vite-ontwikkelserver om de applicatie te openen. Open `index.html` niet rechtstreeks en gebruik niet de VS Code Live Server-extensie: die zet JSX niet om naar JavaScript.
 
-## React Compiler
+```sh
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Open daarna de URL die Vite in de terminal toont (standaard `http://localhost:5173/`).
 
-## Expanding the ESLint configuration
+## Controleren en bouwen
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```sh
+npm run lint
+npm run build
+```
