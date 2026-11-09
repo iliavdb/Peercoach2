@@ -136,6 +136,24 @@
   box-shadow: 0 4px 10px rgba(240, 106, 59, 0.2);
 }
 
+.login-form__remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 18px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-form__remember input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
 .login-form__error {
   margin: -8px 0 15px;
   color: #b42318;

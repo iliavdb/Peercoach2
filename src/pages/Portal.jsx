@@ -39,7 +39,7 @@ const settingOptions = [
 
 function getStoredUser() {
   const email = localStorage.getItem('email') || ''
-  if (/^\d{5}@student\.zadkine\.nl$/i.test(email)) {
+  if (/^[^\s@]+@student\.zadkine\.nl$/i.test(email)) {
     return { email, role: 'student' }
   }
   if (/^[^\s@]+@tcrmbo\.nl$/i.test(email)) {
@@ -65,6 +65,7 @@ function Portal() {
 
   const isStudent = user.role === 'student'
   const firstName = isStudent ? `Student ${user.email.split('@')[0]}` : user.email.split('@')[0]
+  const roleLabel = isStudent ? 'Student' : 'Docent'
   const unreadCount = notifications.filter((notification) => notification.unread).length
   const today = new Intl.DateTimeFormat('nl-NL', {
     weekday: 'long',
@@ -76,6 +77,7 @@ function Portal() {
 
   const logout = () => {
     localStorage.removeItem('email')
+    localStorage.removeItem('rememberMe')
     window.location.assign('/login')
   }
 
@@ -181,7 +183,7 @@ function Portal() {
 
       <section className="portal-tip">
         <span className="portal-tip__icon" aria-hidden="true">✳</span>
-        <div><strong>Samen kom je verder</strong><p>{isStudent ? 'Een vraag over de les? Vraag een klasgenoot om samen te oefenen op het leerplein.' : 'Maak ruimte voor vragen. Samen met je klas kom je vaak tot nieuwe inzichten.'}</p></div>
+        <div><strong>Samen kom je verder</strong><p>{isStudent ? 'Een vraag over de les? Vraag een klasgenoot om samen te oefenen op het leerplein.' : 'Begeleid je klas, geef feedback en houd de voortgang van projecten scherp.'}</p></div>
         <span className="portal-tip__spark" aria-hidden="true">✦</span>
       </section>
     </>
@@ -191,8 +193,8 @@ function Portal() {
     <>
       <section className="portal-page-intro">
         <p className="portal-eyebrow">JOUW PLANNING</p>
-        <h1>Mijn rooster</h1>
-        <p>Een handig overzicht van je activiteiten voor vandaag.</p>
+        <h1>{isStudent ? 'Mijn rooster' : 'Mijn les- en mentorplanning'}</h1>
+        <p>{isStudent ? 'Een handig overzicht van je activiteiten voor vandaag.' : 'Een overzicht van je lessen, mentoruren en begeleidingsmomenten voor vandaag.'}</p>
       </section>
       <section className="portal-card portal-full-card">
         <div className="portal-card__heading">
@@ -211,7 +213,7 @@ function Portal() {
   const renderNotificationsPage = () => (
     <>
       <section className="portal-page-intro portal-page-intro--actions">
-        <div><p className="portal-eyebrow">DIT WIL JE WETEN</p><h1>Notificaties</h1><p>Alle updates over jouw rooster en PeerCoach op één plek.</p></div>
+        <div><p className="portal-eyebrow">DIT WIL JE WETEN</p><h1>Notificaties</h1><p>{isStudent ? 'Alle updates over jouw rooster en PeerCoach op één plek.' : 'Alle updates over je lessen, mentoruren en studentvolging op één plek.'}</p></div>
         <button className="portal-secondary-button" type="button" onClick={markAllRead} disabled={unreadCount === 0}>Markeer alles als gelezen</button>
       </section>
       <section className="portal-card portal-full-card">
@@ -223,7 +225,7 @@ function Portal() {
 
   const renderSettingsPage = () => (
     <>
-      <section className="portal-page-intro"><p className="portal-eyebrow">MAAK HET JOUW PLEK</p><h1>Instellingen</h1><p>Kies welke updates je wilt ontvangen.</p></section>
+      <section className="portal-page-intro"><p className="portal-eyebrow">MAAK HET JOUW PLEK</p><h1>Instellingen</h1><p>{isStudent ? 'Kies welke updates je wilt ontvangen.' : 'Kies welke updates je als docent wilt ontvangen over lessen en begeleiding.'}</p></section>
       <section className="portal-card portal-full-card portal-settings-card">
         <div className="portal-card__heading"><div><p className="portal-card__eyebrow">VOORKEUREN</p><h2>Notificaties</h2></div></div>
         {settings.map((setting) => (
@@ -254,13 +256,17 @@ function Portal() {
       <section className="portal-card portal-full-card portal-profile-card">
         <div className="portal-profile-card__top">
           <div className="portal-avatar">{isStudent ? 'S' : firstName.charAt(0).toUpperCase()}</div>
-          <div><p className="portal-card__eyebrow">PEERCOACH-ACCOUNT</p><h2>{firstName}</h2><span className="portal-role-chip">{isStudent ? 'Student' : 'Docent'}</span></div>
+          <div><p className="portal-card__eyebrow">PEERCOACH-ACCOUNT</p><h2>{firstName}</h2><span className="portal-role-chip">{roleLabel}</span></div>
         </div>
         <div className="portal-profile-details">
           <div><span>E-mailadres</span><strong>{user.email}</strong></div>
-          <div><span>Rol</span><strong>{isStudent ? 'Student' : 'Docent'}</strong></div>
+          <div><span>Rol</span><strong>{roleLabel}</strong></div>
           <div><span>School</span><strong>Techniek College Rotterdam</strong></div>
-          {isStudent && <div><span>Studentnummer</span><strong>{user.email.split('@')[0]}</strong></div>}
+          {isStudent ? (
+            <div><span>Studentnummer</span><strong>{user.email.split('@')[0]}</strong></div>
+          ) : (
+            <div><span>Werkzaam als</span><strong>Docent / begeleider</strong></div>
+          )}
         </div>
         <p className="portal-demo-note">Accountgegevens zijn in deze demo alleen lokaal opgeslagen. Voor wijzigingen kun je terecht bij de schooladministratie.</p>
       </section>

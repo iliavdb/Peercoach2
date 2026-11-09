@@ -1,21 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './Login.css'
 import logo from '../assets/logo.png'
+
+const isStudentEmail = (value) => /^[^\s@]+@student\.zadkine\.nl$/i.test(value)
+const isTeacherEmail = (value) => /^[^\s@]+@tcrmbo\.nl$/i.test(value)
 
 const Login = () => {
   const [email, setEmail] = useState(localStorage.getItem('email') || '')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem('rememberMe') === 'true')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('email') || ''
+    const shouldRemember = localStorage.getItem('rememberMe') === 'true'
+
+    if (shouldRemember && savedEmail && (isStudentEmail(savedEmail) || isTeacherEmail(savedEmail))) {
+      window.location.assign('/portaal')
+    }
+  }, [])
 
   const handleLogin = (event) => {
     event.preventDefault()
 
     const normalizedEmail = email.trim().toLowerCase()
-    const isStudent = /^\d{5}@student\.zadkine\.nl$/.test(normalizedEmail)
-    const isTeacher = /^[^\s@]+@tcrmbo\.nl$/.test(normalizedEmail)
+    const isStudent = isStudentEmail(normalizedEmail)
+    const isTeacher = isTeacherEmail(normalizedEmail)
 
     if (!isStudent && !isTeacher) {
-      setError('Gebruik je schoolaccount: 5 cijfers@student.zadkine.nl of je docentaccount @tcrmbo.nl.')
+      setError('Gebruik je schoolaccount: naam@student.zadkine.nl of je docentaccount @tcrmbo.nl.')
       return
     }
 
@@ -25,6 +38,14 @@ const Login = () => {
     }
 
     localStorage.setItem('email', normalizedEmail)
+
+    if (rememberMe) {
+      localStorage.setItem('rememberMe', 'true')
+    } else {
+      localStorage.removeItem('rememberMe')
+      localStorage.removeItem('email')
+    }
+
     window.location.assign('/portaal')
   }
 
@@ -41,7 +62,7 @@ const Login = () => {
           type="email"
           id="email"
           autoComplete="username"
-          placeholder="12345@student.zadkine.nl"
+          placeholder="naam@student.zadkine.nl"
           value={email}
           onChange={(event) => {
             setEmail(event.target.value)
@@ -62,6 +83,16 @@ const Login = () => {
           }}
           required
         />
+
+        <label className="login-form__remember" htmlFor="remember-me">
+          <input
+            id="remember-me"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(event) => setRememberMe(event.target.checked)}
+          />
+          <span>Onthoud mij</span>
+        </label>
 
         {error && <p className="login-form__error" role="alert">{error}</p>}
         <button type="submit">Inloggen <span aria-hidden="true">→</span></button>
