@@ -25,6 +25,108 @@ const schedules = {
   ],
 }
 
+const studentCases = [
+  {
+    id: 'rekenen',
+    title: 'Rekenen: procenten oefenen',
+    description: 'Samen met je peercoach werken aan de voorbereiding voor de toets.',
+    status: 'In uitvoering',
+    dateOffset: 1,
+    progress: 65,
+    icon: '＋',
+    color: 'orange',
+  },
+  {
+    id: 'elektro',
+    title: 'Praktijkopdracht elektrotechniek',
+    description: 'De laatste onderdelen van de schakeling afronden en controleren.',
+    status: 'Wacht op feedback',
+    dateOffset: 3,
+    progress: 80,
+    icon: '⌁',
+    color: 'blue',
+  },
+  {
+    id: 'nederlands',
+    title: 'Presentatie Nederlands',
+    description: 'De opzet staat; oefen samen nog de introductie en afsluiting.',
+    status: 'Gepland',
+    dateOffset: 5,
+    progress: 35,
+    icon: '▤',
+    color: 'purple',
+  },
+]
+
+const teacherCases = [
+  {
+    id: 'e2a',
+    title: 'Peercoaching klas E2A',
+    description: 'Drie studenten werken aan hun persoonlijke leerdoelen.',
+    status: 'In uitvoering',
+    dateOffset: 1,
+    progress: 65,
+    icon: '◉',
+    color: 'orange',
+  },
+  {
+    id: 'project',
+    title: 'Voortgang praktijkproject',
+    description: 'Feedback op de tussenresultaten van de elektrotechniekopdracht.',
+    status: 'Wacht op feedback',
+    dateOffset: 3,
+    progress: 80,
+    icon: '⌁',
+    color: 'blue',
+  },
+  {
+    id: 'mentor',
+    title: 'Mentorgesprekken E1B',
+    description: 'De laatste twee gesprekken staan nog op de planning.',
+    status: 'Gepland',
+    dateOffset: 5,
+    progress: 35,
+    icon: '▤',
+    color: 'purple',
+  },
+]
+
+const recommendedHelpRequests = [
+  {
+    id: 'breuken',
+    title: 'Samen oefenen met breuken',
+    summary: 'Ik zoek iemand die de basis van breuken rustig en stap voor stap kan uitleggen.',
+    details: 'Voor de komende rekentoets wil ik graag breuken oefenen. Vooral het optellen en vereenvoudigen vind ik lastig. Een uurtje samen oefenen op het leerplein zou al heel fijn zijn.',
+    category: 'Rekenen',
+    author: 'Amira',
+    timing: 'Deze week',
+    icon: '＋',
+    color: 'orange',
+  },
+  {
+    id: 'elektroschema',
+    title: 'Hulp bij mijn elektroschema',
+    summary: 'Wie kijkt met me mee of mijn schakelschema goed is opgebouwd?',
+    details: 'Ik heb een eerste versie van mijn schakelschema gemaakt voor de praktijkopdracht. Ik wil graag controleren of de aansluitingen kloppen voordat ik verder bouw.',
+    category: 'Elektrotechniek',
+    author: 'Youssef',
+    timing: 'Voor vrijdag',
+    icon: '⌁',
+    color: 'blue',
+  },
+  {
+    id: 'presenteren',
+    title: 'Presentatie oefenen',
+    summary: 'Ik wil graag mijn presentatie oefenen en wat meer zelfvertrouwen krijgen.',
+    details: 'Mijn presentatie voor Nederlands is bijna klaar. Ik zoek een medestudent om samen te oefenen en tips te krijgen voor duidelijk spreken en een sterke opening.',
+    category: 'Nederlands',
+    author: 'Noah',
+    timing: 'Volgende week',
+    icon: '▤',
+    color: 'purple',
+  },
+]
+
 const initialNotifications = [
   { id: 1, title: 'Je rooster is bijgewerkt', text: 'Er is een lokaal gewijzigd voor je eerstvolgende praktijkles.', time: 'Vandaag · 08:42', unread: true, icon: '▦' },
   { id: 2, title: 'Welkom bij PeerCoach', text: 'Bekijk je portaal en ontdek wat je vandaag kunt doen.', time: 'Gisteren · 15:10', unread: true, icon: '✳' },
@@ -38,7 +140,7 @@ const settingOptions = [
 ]
 
 function getStoredUser() {
-  const email = localStorage.getItem('email') || ''
+  const email = localStorage.getItem('email') || sessionStorage.getItem('email') || ''
   if (/^[^\s@]+@student\.zadkine\.nl$/i.test(email)) {
     return { email, role: 'student' }
   }
@@ -54,12 +156,25 @@ function Portal() {
   const [activePage, setActivePage] = useState('overzicht')
   const [notifications, setNotifications] = useState(initialNotifications)
   const [settings, setSettings] = useState(settingOptions)
+  const [selectedHelpRequest, setSelectedHelpRequest] = useState(null)
+  const [respondedRequestIds, setRespondedRequestIds] = useState([])
 
   useEffect(() => {
     if (!user) {
       window.location.replace('/login')
     }
   }, [user])
+
+  useEffect(() => {
+    if (!selectedHelpRequest) return undefined
+
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setSelectedHelpRequest(null)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [selectedHelpRequest])
 
   if (!user) return null
 
@@ -74,10 +189,26 @@ function Portal() {
   }).format(new Date())
   const dayName = new Intl.DateTimeFormat('nl-NL', { weekday: 'long' }).format(new Date())
   const schedule = schedules[user.role]
+  const cases = isStudent ? studentCases : teacherCases
+  const completedCount = isStudent ? 8 : 12
+  const openCount = isStudent ? 3 : 6
+  const averageProgress = Math.round(
+    cases.reduce((total, item) => total + item.progress, 0) / cases.length,
+  )
+
+  const formatCaseDate = (offset) => {
+    const date = new Date()
+    date.setDate(date.getDate() + offset)
+    return new Intl.DateTimeFormat('nl-NL', {
+      day: 'numeric',
+      month: 'short',
+    }).format(date)
+  }
 
   const logout = () => {
     localStorage.removeItem('email')
     localStorage.removeItem('rememberMe')
+    sessionStorage.removeItem('email')
     window.location.assign('/login')
   }
 
@@ -132,6 +263,38 @@ function Portal() {
     )
   }
 
+  const renderRecommendedHelp = () => (
+    <section className="portal-recommendations" aria-labelledby="portal-recommendations-title">
+      <div className="portal-progress-heading">
+        <div>
+          <p className="portal-card__eyebrow">SAMEN KOM JE VERDER</p>
+          <h2 id="portal-recommendations-title">Aanbevolen hulpvragen</h2>
+        </div>
+        <span className="portal-progress-period">Past bij jouw opleiding</span>
+      </div>
+      <div className="portal-recommendations__grid">
+        {recommendedHelpRequests.map((request) => (
+          <article className="portal-recommendation" key={request.id}>
+            <div className="portal-recommendation__top">
+              <span className={`portal-case__icon portal-case__icon--${request.color}`} aria-hidden="true">{request.icon}</span>
+              <span className="portal-recommendation__category">{request.category}</span>
+            </div>
+            <h3>{request.title}</h3>
+            <p>{request.summary}</p>
+            <div className="portal-recommendation__meta">
+              <span>Van {request.author}</span>
+              <span aria-hidden="true">·</span>
+              <span>{request.timing}</span>
+            </div>
+            <button className="portal-recommendation__button" type="button" onClick={() => setSelectedHelpRequest(request)}>
+              Bekijk hulpvraag <span aria-hidden="true">→</span>
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+
   const renderOverview = () => (
     <>
       <section className="portal-welcome">
@@ -180,6 +343,67 @@ function Portal() {
           <button className="portal-card__footer-link" type="button" onClick={() => setActivePage('meldingen')}>Alle notificaties bekijken <span aria-hidden="true">→</span></button>
         </section>
       </div>
+
+      <section className="portal-progress-section" aria-labelledby="portal-progress-title">
+        <div className="portal-progress-heading">
+          <div>
+            <p className="portal-card__eyebrow">JOUW ONTWIKKELING</p>
+            <h2 id="portal-progress-title">{isStudent ? 'Jouw voortgang' : 'Voortgang van je begeleiding'}</h2>
+          </div>
+          <span className="portal-progress-period">Dit schooljaar</span>
+        </div>
+        <div className="portal-progress-stats">
+          <article className="portal-progress-stat">
+            <span className="portal-progress-stat__icon portal-progress-stat__icon--orange" aria-hidden="true">↗</span>
+            <div><p>Gemiddelde voortgang</p><strong>{averageProgress}%</strong></div>
+            <div className="portal-progress-bar" role="progressbar" aria-label="Gemiddelde voortgang" aria-valuenow={averageProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${averageProgress}%` }} /></div>
+          </article>
+          <article className="portal-progress-stat">
+            <span className="portal-progress-stat__icon portal-progress-stat__icon--green" aria-hidden="true">✓</span>
+            <div><p>Afgerond</p><strong>{completedCount} <small>{isStudent ? 'leerdoelen' : 'trajecten'}</small></strong></div>
+            <span className="portal-progress-stat__note">Mooi bezig!</span>
+          </article>
+          <article className="portal-progress-stat">
+            <span className="portal-progress-stat__icon portal-progress-stat__icon--blue" aria-hidden="true">↻</span>
+            <div><p>Lopende zaken</p><strong>{cases.length} <small>{isStudent ? 'trajecten' : 'dossiers'}</small></strong></div>
+            <span className="portal-progress-stat__note">Actief</span>
+          </article>
+          <article className="portal-progress-stat">
+            <span className="portal-progress-stat__icon portal-progress-stat__icon--purple" aria-hidden="true">◷</span>
+            <div><p>Openstaande acties</p><strong>{openCount} <small>te doen</small></strong></div>
+            <span className="portal-progress-stat__note">Volgende: {formatCaseDate(1)}</span>
+          </article>
+        </div>
+
+        <section className="portal-card portal-cases-card" aria-labelledby="portal-cases-title">
+          <div className="portal-card__heading">
+            <div><p className="portal-card__eyebrow">OM MEE AAN DE SLAG TE GAAN</p><h2 id="portal-cases-title">{isStudent ? 'Lopende leerzaken' : 'Lopende begeleidingen'}</h2></div>
+            <span className="portal-cases-count">{cases.length} actief</span>
+          </div>
+          <div className="portal-cases-list">
+            {cases.map((item) => (
+              <article className="portal-case" key={item.id}>
+                <span className={`portal-case__icon portal-case__icon--${item.color}`} aria-hidden="true">{item.icon}</span>
+                <div className="portal-case__content">
+                  <div className="portal-case__heading">
+                    <h3>{item.title}</h3>
+                    <span className={`portal-case__status portal-case__status--${item.color}`}>{item.status}</span>
+                  </div>
+                  <p>{item.description}</p>
+                  <div className="portal-case__meta">
+                    <span><span aria-hidden="true">◷</span> Volgende stap: {formatCaseDate(item.dateOffset)}</span>
+                    <span>{item.progress}%</span>
+                  </div>
+                  <div className="portal-case__progress" role="progressbar" aria-label={`Voortgang ${item.title}`} aria-valuenow={item.progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${item.progress}%` }} /></div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="portal-demo-note">Dit is een persoonlijk voorbeeldoverzicht. Bespreek de voortgang van je leerdoelen met je peercoach of mentor.</p>
+        </section>
+      </section>
+
+      {renderRecommendedHelp()}
 
       <section className="portal-tip">
         <span className="portal-tip__icon" aria-hidden="true">✳</span>
@@ -318,6 +542,34 @@ function Portal() {
           </div>
         </header>
         <div className="portal-content">{pageContent}</div>
+        {selectedHelpRequest && (
+          <div
+            className="portal-dialog-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setSelectedHelpRequest(null)
+            }}
+          >
+            <section className="portal-help-dialog" role="dialog" aria-modal="true" aria-labelledby="portal-help-dialog-title" aria-describedby="portal-help-dialog-description">
+              <button className="portal-help-dialog__close" type="button" aria-label="Hulpvraag sluiten" onClick={() => setSelectedHelpRequest(null)}>×</button>
+              <span className={`portal-case__icon portal-case__icon--${selectedHelpRequest.color}`} aria-hidden="true">{selectedHelpRequest.icon}</span>
+              <p className="portal-card__eyebrow">{selectedHelpRequest.category} · HULPVRAAG</p>
+              <h2 id="portal-help-dialog-title">{selectedHelpRequest.title}</h2>
+              <p id="portal-help-dialog-description">{selectedHelpRequest.details}</p>
+              <div className="portal-help-dialog__meta"><span>Geplaatst door <strong>{selectedHelpRequest.author}</strong></span><span>Gewenst: <strong>{selectedHelpRequest.timing.toLowerCase()}</strong></span></div>
+              {respondedRequestIds.includes(selectedHelpRequest.id) ? (
+                <p className="portal-help-dialog__confirmation" role="status">Je hebt aangegeven dat je wilt helpen. In deze demo is je reactie lokaal genoteerd.</p>
+              ) : (
+                <button
+                  className="portal-help-dialog__action"
+                  type="button"
+                  onClick={() => setRespondedRequestIds((current) => [...current, selectedHelpRequest.id])}
+                >
+                  Ik bied hulp aan <span aria-hidden="true">→</span>
+                </button>
+              )}
+            </section>
+          </div>
+        )}
         <footer className="portal-footer"><span>© {new Date().getFullYear()} PeerCoach · Techniek College Rotterdam</span><span>Samen kom je verder <b aria-hidden="true">✦</b></span></footer>
       </main>
     </div>

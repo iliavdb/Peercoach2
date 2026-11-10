@@ -6,7 +6,9 @@ const isStudentEmail = (value) => /^[^\s@]+@student\.zadkine\.nl$/i.test(value)
 const isTeacherEmail = (value) => /^[^\s@]+@tcrmbo\.nl$/i.test(value)
 
 const Login = () => {
-  const [email, setEmail] = useState(localStorage.getItem('email') || '')
+  const [email, setEmail] = useState(
+    localStorage.getItem('email') || sessionStorage.getItem('email') || '',
+  )
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(localStorage.getItem('rememberMe') === 'true')
   const [error, setError] = useState('')
@@ -37,13 +39,14 @@ const Login = () => {
       return
     }
 
-    localStorage.setItem('email', normalizedEmail)
-
     if (rememberMe) {
+      localStorage.setItem('email', normalizedEmail)
       localStorage.setItem('rememberMe', 'true')
+      sessionStorage.removeItem('email')
     } else {
       localStorage.removeItem('rememberMe')
       localStorage.removeItem('email')
+      sessionStorage.setItem('email', normalizedEmail)
     }
 
     window.location.assign('/portaal')
