@@ -5,10 +5,15 @@ import Footer from './components/Footer.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Portal from './pages/Portal.jsx'
+import HelpRequests from './pages/HelpRequests.jsx'
 import './App.css'
 
 function App() {
   const path = window.location.pathname
+
+  if (path === '/hulpvragen') {
+    return <HelpRequests />
+  }
 
   if (path === '/portaal') {
     return <Portal />
