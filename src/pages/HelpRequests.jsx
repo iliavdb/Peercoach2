@@ -19,11 +19,7 @@ const CATEGORY_STYLES = {
   Loopbaan: { icon: '➜', color: 'orange' },
 }
 
-/*
- * Privacy: deze dataset bevat bewust GEEN namen, e-mailadressen of
- * studentnummers. Een peercoach ziet alleen de inhoud van de hulpvraag,
- * zodat hij of zij onbevooroordeeld een vraag kan kiezen.
- */
+
 const OPEN_HELP_REQUESTS = [
   {
     id: 'HV-2041',
