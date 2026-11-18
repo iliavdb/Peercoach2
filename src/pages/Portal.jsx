@@ -295,6 +295,15 @@ function Portal() {
               {item.id === 'meldingen' && unreadCount > 0 && <span className="portal-nav__count">{unreadCount}</span>}
             </button>
           ))}
+          <a className="portal-nav__item" href="/mijn-hulpvragen">
+            <span className="portal-nav__icon" aria-hidden="true">✎</span><span>Mijn hulpvragen</span>
+          </a>
+          <a className="portal-nav__item" href="/hulpvraag/nieuw">
+            <span className="portal-nav__icon" aria-hidden="true">＋</span><span>Hulpvraag plaatsen</span>
+          </a>
+          <a className="portal-nav__item" href="/hulpvragen">
+            <span className="portal-nav__icon" aria-hidden="true">↗</span><span>Open hulpvragen</span>
+          </a>
         </nav>
         <div className="portal-sidebar__bottom">
           <div className="portal-help-card"><span aria-hidden="true">✦</span><strong>Kom je ergens niet uit?</strong><p>Vraag hulp aan je docent of mentor.</p></div>

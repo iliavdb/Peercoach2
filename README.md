@@ -19,3 +19,9 @@ Open daarna de URL die Vite in de terminal toont (standaard `http://localhost:51
 npm run lint
 npm run build
 ```
+
+## Hulpvragen
+
+Studenten kunnen via het portaal een hulpvraag plaatsen en beheren. Hun open
+vragen zijn zichtbaar in het peercoach-overzicht op `/hulpvragen`. Totdat er
+een backend is aangesloten, worden hulpvragen lokaal in de browser bewaard.

@@ -127,6 +127,7 @@
 .home-cta {
   display: flex;
   width: min(1160px, calc(100% - 48px));
+  box-sizing: border-box;
   min-height: 205px;
   align-items: center;
   justify-content: space-between;

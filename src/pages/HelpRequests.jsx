@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import logo from '../assets/logo.png'
+import { loadHelpRequests } from '../utils/helpRequestStorage.js'
 import './HelpRequests.css'
 
 const CATEGORIES = [
@@ -123,6 +124,27 @@ function HelpRequests() {
   const [category, setCategory] = useState('Alle vragen')
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [matchedIds, setMatchedIds] = useState([])
+  const [studentRequests] = useState(loadHelpRequests)
+
+  const allRequests = [
+    ...studentRequests
+      .filter((request) => request.status === 'open')
+      .map((request) => ({
+        id: `student-${request.id}`,
+        category: 'Studie & vakken',
+        title: request.titel,
+        summary: request.omschrijving,
+        question: request.omschrijving,
+        level: request.vak,
+        posted:
+          request.aangemaaktOp && !Number.isNaN(new Date(request.aangemaaktOp).getTime())
+            ? `Geplaatst op ${new Date(request.aangemaaktOp).toLocaleDateString('nl-NL')}`
+            : 'Recent geplaatst',
+        wanted: request.taal ? `Hulp bij ${request.taal}` : 'Uitleg en samen oefenen',
+        isNew: true,
+      })),
+    ...OPEN_HELP_REQUESTS,
+  ]
 
   useEffect(() => {
     if (!selectedRequest) return undefined
@@ -136,7 +158,7 @@ function HelpRequests() {
   }, [selectedRequest])
 
   const normalizedQuery = query.trim().toLowerCase()
-  const filteredRequests = OPEN_HELP_REQUESTS.filter((request) => {
+  const filteredRequests = allRequests.filter((request) => {
     const matchesCategory = category === 'Alle vragen' || request.category === category
     const matchesQuery =
       normalizedQuery === '' ||
@@ -243,7 +265,7 @@ function HelpRequests() {
 
       <div className="help-results-heading">
         <p className="help-result-count">
-          <strong>{filteredRequests.length}</strong> van {OPEN_HELP_REQUESTS.length} open vragen
+          <strong>{filteredRequests.length}</strong> van {allRequests.length} open vragen
         </p>
         <span className="help-anon-hint">
           <LockIcon size={12} /> Alle vragen zijn anoniem

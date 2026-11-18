@@ -83,6 +83,10 @@
   transition: color 160ms ease, background 160ms ease;
 }
 
+.portal-nav a.portal-nav__item {
+  text-decoration: none;
+}
+
 .portal-nav__item:hover {
   background: #f6f7f8;
   color: var(--portal-dark);
