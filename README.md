@@ -13,6 +13,17 @@ npm run dev
 
 Open daarna de URL die Vite in de terminal toont (standaard `http://localhost:5173/`).
 
+## Voorbeeldrollen
+
+Op de inlogpagina kun je een van de voorbeeldaccounts kiezen:
+
+- Student: `noor.bakker@student.zadkine.nl`
+- Docent: `marieke.dejong@tcrmbo.nl`
+
+Voor beide voorbeeldaccounts is het wachtwoord `peercoach`. De accounts tonen fictieve, rolgerichte profielen, roosters en meldingen; er is geen echte authenticatie of koppeling met schoolgegevens.
+De knop **Start demomodus** op de homepage opent de studentdemo direct. De docentdemo is te openen via de rolkeuze op de inlogpagina.
+In het studentportaal kun je een peercoach-afspraak voorbereiden; in het docentportaal kun je studentopvolging afhandelen. Deze voorbeeldacties werken lokaal in de browser.
+
 ## Controleren en bouwen
 
 ```sh

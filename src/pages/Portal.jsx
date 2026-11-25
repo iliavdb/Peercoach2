@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import logo from '../assets/logo.png'
+import { demoAccounts, roleExamples } from '../data/demoUsers.js'
 import './Portal.css'
 
 const navigation = [
@@ -10,40 +11,15 @@ const navigation = [
   { id: 'account', label: 'Mijn account', icon: '◉' },
 ]
 
-const schedules = {
-  student: [
-    { time: '09:00', end: '10:30', title: 'Rekenen', detail: 'Lokaal B2.14 · Les', color: 'orange' },
-    { time: '10:45', end: '12:15', title: 'Praktijk: elektrotechniek', detail: 'Werkplaats 1 · Praktijk', color: 'blue' },
-    { time: '13:00', end: '14:30', title: 'Nederlands', detail: 'Lokaal A1.08 · Les', color: 'green' },
-    { time: '14:45', end: '15:30', title: 'Peercoach-moment', detail: 'Leerplein · Samen leren', color: 'purple' },
-  ],
-  docent: [
-    { time: '08:30', end: '10:00', title: 'Praktijk elektrotechniek', detail: 'Werkplaats 1 · Klas E2A', color: 'orange' },
-    { time: '10:15', end: '11:45', title: 'Mentoruur', detail: 'Lokaal B2.14 · Klas E2A', color: 'blue' },
-    { time: '12:30', end: '14:00', title: 'Projectbegeleiding', detail: 'Leerplein · Klas E1B', color: 'green' },
-    { time: '14:15', end: '15:00', title: 'Teamoverleg', detail: 'Kamer 2.06 · Techniek', color: 'purple' },
-  ],
-}
-
-const initialNotifications = [
-  { id: 1, title: 'Je rooster is bijgewerkt', text: 'Er is een lokaal gewijzigd voor je eerstvolgende praktijkles.', time: 'Vandaag · 08:42', unread: true, icon: '▦' },
-  { id: 2, title: 'Welkom bij PeerCoach', text: 'Bekijk je portaal en ontdek wat je vandaag kunt doen.', time: 'Gisteren · 15:10', unread: true, icon: '✳' },
-  { id: 3, title: 'Nieuwe week, nieuwe kansen', text: 'Je rooster voor deze week staat voor je klaar.', time: 'Maandag · 09:00', unread: false, icon: '↗' },
-]
-
-const settingOptions = [
-  { id: 'rooster', title: 'Roosterwijzigingen', description: 'Ontvang een melding als je rooster verandert.', enabled: true },
-  { id: 'school', title: 'Schoolmededelingen', description: 'Blijf op de hoogte van nieuws van school.', enabled: true },
-  { id: 'coach', title: 'PeerCoach-updates', description: 'Ontvang tips en updates over samen leren.', enabled: false },
-]
-
 function getStoredUser() {
-  const email = localStorage.getItem('email') || ''
+  const email = localStorage.getItem('email') || sessionStorage.getItem('email') || ''
   if (/^[^\s@]+@student\.zadkine\.nl$/i.test(email)) {
-    return { email, role: 'student' }
+    const account = demoAccounts.find((demoAccount) => demoAccount.email === email.toLowerCase())
+    return { ...account, email, role: 'student' }
   }
   if (/^[^\s@]+@tcrmbo\.nl$/i.test(email)) {
-    return { email, role: 'docent' }
+    const account = demoAccounts.find((demoAccount) => demoAccount.email === email.toLowerCase())
+    return { ...account, email, role: 'docent' }
   }
 
   return null
@@ -52,8 +28,9 @@ function getStoredUser() {
 function Portal() {
   const [user] = useState(getStoredUser)
   const [activePage, setActivePage] = useState('overzicht')
-  const [notifications, setNotifications] = useState(initialNotifications)
-  const [settings, setSettings] = useState(settingOptions)
+  const [notifications, setNotifications] = useState(() => user ? roleExamples[user.role].notifications : [])
+  const [settings, setSettings] = useState(() => user ? roleExamples[user.role].settings : [])
+  const [roleActions, setRoleActions] = useState(() => user ? roleExamples[user.role].actions.items : [])
 
   useEffect(() => {
     if (!user) {
@@ -64,20 +41,23 @@ function Portal() {
   if (!user) return null
 
   const isStudent = user.role === 'student'
-  const firstName = isStudent ? `Student ${user.email.split('@')[0]}` : user.email.split('@')[0]
-  const roleLabel = isStudent ? 'Student' : 'Docent'
+  const roleData = roleExamples[user.role]
+  const firstName = user.name || (isStudent ? `Student ${user.email.split('@')[0]}` : user.email.split('@')[0])
+  const roleLabel = roleData.label
   const unreadCount = notifications.filter((notification) => notification.unread).length
+  const openRoleActionCount = roleActions.filter((action) => !action.completed).length
   const today = new Intl.DateTimeFormat('nl-NL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(new Date())
   const dayName = new Intl.DateTimeFormat('nl-NL', { weekday: 'long' }).format(new Date())
-  const schedule = schedules[user.role]
+  const schedule = roleData.schedule
 
   const logout = () => {
     localStorage.removeItem('email')
     localStorage.removeItem('rememberMe')
+    sessionStorage.removeItem('email')
     window.location.assign('/login')
   }
 
@@ -88,6 +68,12 @@ function Portal() {
   const toggleSetting = (settingId) => {
     setSettings((current) => current.map((setting) => (
       setting.id === settingId ? { ...setting, enabled: !setting.enabled } : setting
+    )))
+  }
+
+  const completeRoleAction = (actionId) => {
+    setRoleActions((current) => current.map((action) => (
+      action.id === actionId ? { ...action, completed: true } : action
     )))
   }
 
@@ -183,8 +169,34 @@ function Portal() {
 
       <section className="portal-tip">
         <span className="portal-tip__icon" aria-hidden="true">✳</span>
-        <div><strong>Samen kom je verder</strong><p>{isStudent ? 'Een vraag over de les? Vraag een klasgenoot om samen te oefenen op het leerplein.' : 'Begeleid je klas, geef feedback en houd de voortgang van projecten scherp.'}</p></div>
+        <div><strong>{roleData.highlight.title}</strong><p>{roleData.highlight.text}</p></div>
         <span className="portal-tip__spark" aria-hidden="true">✦</span>
+      </section>
+
+      <section className="portal-card portal-full-card portal-role-actions">
+        <div className="portal-card__heading">
+          <div><p className="portal-card__eyebrow">{roleData.actions.eyebrow}</p><h2>{roleData.actions.title}</h2></div>
+          <span className="portal-count">{openRoleActionCount} {openRoleActionCount === 1 ? 'open actie' : 'open acties'}</span>
+        </div>
+        <p className="portal-role-actions__intro">{roleData.actions.description}</p>
+        <div className="portal-role-actions__list">
+          {roleActions.map((action) => (
+            <article className="portal-role-action" key={action.id}>
+              <div>
+                <h3>{action.title}</h3>
+                <p>{action.detail}</p>
+              </div>
+              <button
+                className={`portal-secondary-button${action.completed ? ' portal-secondary-button--complete' : ''}`}
+                type="button"
+                disabled={action.completed}
+                onClick={() => completeRoleAction(action.id)}
+              >
+                {action.completed ? action.completedLabel : action.actionLabel}
+              </button>
+            </article>
+          ))}
+        </div>
       </section>
     </>
   )
@@ -262,11 +274,12 @@ function Portal() {
           <div><span>E-mailadres</span><strong>{user.email}</strong></div>
           <div><span>Rol</span><strong>{roleLabel}</strong></div>
           <div><span>School</span><strong>Techniek College Rotterdam</strong></div>
-          {isStudent ? (
-            <div><span>Studentnummer</span><strong>{user.email.split('@')[0]}</strong></div>
-          ) : (
-            <div><span>Werkzaam als</span><strong>Docent / begeleider</strong></div>
-          )}
+          {(user.details || (isStudent
+            ? [{ label: 'Studentnummer', value: 'Wordt gekoppeld aan je schoolaccount' }]
+            : [{ label: 'Werkzaam als', value: 'Docent / begeleider' }]
+          )).map((detail) => (
+            <div key={detail.label}><span>{detail.label}</span><strong>{detail.value}</strong></div>
+          ))}
         </div>
         <p className="portal-demo-note">Accountgegevens zijn in deze demo alleen lokaal opgeslagen. Voor wijzigingen kun je terecht bij de schooladministratie.</p>
       </section>

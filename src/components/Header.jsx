@@ -1,6 +1,19 @@
 import './Header.css'
+import { demoAccounts } from '../data/demoUsers.js'
 
 function Header() {
+  const startDemo = () => {
+    const studentAccount = demoAccounts.find((account) => account.role === 'student')
+    if (!studentAccount) {
+      throw new Error('A student demo account must be configured before starting demo mode.')
+    }
+
+    localStorage.removeItem('email')
+    localStorage.removeItem('rememberMe')
+    sessionStorage.setItem('email', studentAccount.email)
+    window.location.assign('/portaal')
+  }
+
   return (
     <header className="hero">
       <div className="hero__inner">
@@ -22,6 +35,9 @@ function Header() {
             <a className="button button--primary" href="/login">
               Vind een peercoach <span aria-hidden="true">→</span>
             </a>
+            <button className="button button--demo" type="button" onClick={startDemo}>
+              Start demomodus <span aria-hidden="true">→</span>
+            </button>
             <a className="button button--quiet" href="#hoe-werkt-het">
               Ontdek hoe het werkt
             </a>

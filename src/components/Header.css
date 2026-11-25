@@ -108,6 +108,29 @@
   transform: translateX(3px);
 }
 
+.button--demo {
+  border: 1px solid #f3c6b6;
+  background: #fff3ee;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.button--demo span {
+  font-size: 18px;
+  transition: transform 180ms ease;
+}
+
+.button--demo:hover {
+  transform: translateY(-2px);
+  background: #ffe8de;
+  box-shadow: 0 8px 18px rgba(217, 81, 40, 0.13);
+}
+
+.button--demo:hover span {
+  transform: translateX(3px);
+}
+
 .button--quiet {
   color: var(--color-ink);
 }

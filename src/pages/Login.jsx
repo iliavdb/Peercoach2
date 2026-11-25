@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import './Login.css'
 import logo from '../assets/logo.png'
+import { demoAccounts, demoPassword } from '../data/demoUsers.js'
 
 const isStudentEmail = (value) => /^[^\s@]+@student\.zadkine\.nl$/i.test(value)
 const isTeacherEmail = (value) => /^[^\s@]+@tcrmbo\.nl$/i.test(value)
 
 const Login = () => {
-  const [email, setEmail] = useState(localStorage.getItem('email') || '')
+  const [email, setEmail] = useState(localStorage.getItem('email') || sessionStorage.getItem('email') || '')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(localStorage.getItem('rememberMe') === 'true')
   const [error, setError] = useState('')
@@ -37,13 +38,20 @@ const Login = () => {
       return
     }
 
-    localStorage.setItem('email', normalizedEmail)
+    const isDemoAccount = demoAccounts.some((account) => account.email === normalizedEmail)
+    if (isDemoAccount && password !== demoPassword) {
+      setError('Voor beide voorbeeldaccounts is het wachtwoord: peercoach.')
+      return
+    }
 
     if (rememberMe) {
+      localStorage.setItem('email', normalizedEmail)
       localStorage.setItem('rememberMe', 'true')
+      sessionStorage.removeItem('email')
     } else {
       localStorage.removeItem('rememberMe')
       localStorage.removeItem('email')
+      sessionStorage.setItem('email', normalizedEmail)
     }
 
     window.location.assign('/portaal')
@@ -96,9 +104,27 @@ const Login = () => {
 
         {error && <p className="login-form__error" role="alert">{error}</p>}
         <button type="submit">Inloggen <span aria-hidden="true">→</span></button>
-        <p className="login-form__demo">
-          Demoportaal: je wachtwoord wordt niet gecontroleerd. Gebruik een schoolmailadres om de juiste rol te zien.
-        </p>
+        <div className="login-form__examples">
+          <p>Bekijk een voorbeeldrol</p>
+          {demoAccounts.map((account) => (
+            <button
+              className="login-form__example"
+              type="button"
+              key={account.email}
+              onClick={() => {
+                setEmail(account.email)
+                setPassword('peercoach')
+                setError('')
+              }}
+            >
+              <span><strong>{account.name}</strong><small>{account.role === 'student' ? 'Student' : 'Docent'} · {account.email}</small></span>
+              <span aria-hidden="true">→</span>
+            </button>
+          ))}
+          <p className="login-form__demo">
+            Voor beide voorbeeldaccounts is het wachtwoord: <strong>peercoach</strong>.
+          </p>
+        </div>
       </form>
     </div>
   )
