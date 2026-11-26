@@ -7,6 +7,12 @@
   text-align: left;
 }
 
+.request-page--embedded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .request-page__heading {
   max-width: 700px;
   margin-bottom: 24px;
@@ -133,6 +139,35 @@
   align-self: flex-end;
   color: #84919d;
   font-size: 11px;
+}
+
+.request-private-contact {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 17px;
+  border: 1px solid #dfe9e5;
+  border-radius: 10px;
+  background: #f8fbf9;
+}
+
+.request-private-contact legend {
+  padding: 0 5px;
+  color: #304357;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.request-private-contact > p {
+  margin: -5px 0 0;
+  color: #71847c;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.request-private-contact .request-form__row {
+  gap: 12px;
 }
 
 .request-privacy-note {
@@ -279,6 +314,92 @@
   margin: auto 0 0;
   color: #8b97a2;
   font-size: 11px;
+}
+
+.request-match-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f2f4;
+}
+
+.request-match-list h3 {
+  margin: 0;
+  color: #304357;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.request-match {
+  padding: 11px 12px;
+  border: 1px solid #d8e8e2;
+  border-radius: 9px;
+  background: #f7fbf8;
+}
+
+.request-match p {
+  margin: 0;
+  color: #46586a;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.request-match .request-match__status {
+  display: inline-flex;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: normal;
+}
+
+.request-match__status--pending {
+  background: #fff4e5;
+  color: #9a6416;
+}
+
+.request-match__status--approved {
+  background: #eaf5ef;
+  color: #347653;
+}
+
+.request-match__status--rejected {
+  background: #fff0ef;
+  color: #a9453e;
+}
+
+.request-match .request-match__closed {
+  margin-top: 8px;
+  color: #8a625e;
+  font-size: 11px;
+}
+
+.request-match__contact {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e3eee8;
+  color: #46586a;
+  font-size: 11px;
+}
+
+.request-match__contact strong {
+  color: #2f6a57;
+}
+
+.request-match__contact a {
+  color: #287c68;
+  overflow-wrap: anywhere;
+}
+
+.request-match time {
+  display: block;
+  margin-top: 7px;
+  color: #7d8a96;
+  font-size: 10px;
 }
 
 .request-card__actions {

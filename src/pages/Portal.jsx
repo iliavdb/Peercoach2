@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
 import logo from '../assets/logo.png'
+import {
+  loadHelpRequests,
+  loadMatchRequests,
+  updateMatchRequest,
+} from '../utils/helpRequestStorage.js'
+import HelpRequests from './HelpRequests.jsx'
+import HelpRequestOverview from './HelpRequestOverview.jsx'
+import HelpRequestNew from './HelpRequestNew.jsx'
+import HelpRequestEdit from './HelpRequestEdit.jsx'
 import './Portal.css'
 
 const navigation = [
@@ -8,6 +17,12 @@ const navigation = [
   { id: 'meldingen', label: 'Notificaties', icon: '♧' },
   { id: 'instellingen', label: 'Instellingen', icon: '⚙' },
   { id: 'account', label: 'Mijn account', icon: '◉' },
+]
+
+const helpNavigation = [
+  { id: 'mijn-hulpvragen', label: 'Mijn hulpvragen', icon: '✎' },
+  { id: 'hulpvraag-nieuw', label: 'Hulpvraag plaatsen', icon: '＋' },
+  { id: 'hulpvragen', label: 'Open hulpvragen', icon: '↗' },
 ]
 
 const schedules = {
@@ -38,7 +53,7 @@ const settingOptions = [
 ]
 
 function getStoredUser() {
-  const email = localStorage.getItem('email') || ''
+  const email = localStorage.getItem('email') || sessionStorage.getItem('email') || ''
   if (/^[^\s@]+@student\.zadkine\.nl$/i.test(email)) {
     return { email, role: 'student' }
   }
@@ -54,6 +69,14 @@ function Portal() {
   const [activePage, setActivePage] = useState('overzicht')
   const [notifications, setNotifications] = useState(initialNotifications)
   const [settings, setSettings] = useState(settingOptions)
+  const [matchRequests, setMatchRequests] = useState(loadMatchRequests)
+  const [helpRequests] = useState(loadHelpRequests)
+  const [matchFilter, setMatchFilter] = useState('all')
+  const [selectedMatchRequestId, setSelectedMatchRequestId] = useState(null)
+  const [matchActionError, setMatchActionError] = useState('')
+  const [matchActionNotice, setMatchActionNotice] = useState('')
+  const [requestNotice, setRequestNotice] = useState('')
+  const [editingHelpRequestId, setEditingHelpRequestId] = useState(null)
 
   useEffect(() => {
     if (!user) {
@@ -61,11 +84,34 @@ function Portal() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (!selectedMatchRequestId) return undefined
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') setSelectedMatchRequestId(null)
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedMatchRequestId])
+
   if (!user) return null
 
   const isStudent = user.role === 'student'
   const firstName = isStudent ? `Student ${user.email.split('@')[0]}` : user.email.split('@')[0]
   const roleLabel = isStudent ? 'Student' : 'Docent'
+  const portalNavigation = isStudent
+    ? navigation
+    : [...navigation, { id: 'matchverzoeken', label: 'Matchverzoeken', icon: '⇄' }]
+  const currentPageLabel = portalNavigation.find((item) => item.id === activePage)?.label
+    ?? helpNavigation.find((item) => item.id === activePage)?.label
+    ?? (activePage === 'hulpvraag-bewerken' ? 'Hulpvraag bewerken' : undefined)
+  const selectedMatchRequest = matchRequests.find(
+    (matchRequest) => String(matchRequest.id) === String(selectedMatchRequestId),
+  )
+  const pendingMatchCount = matchRequests.filter(
+    (matchRequest) => (matchRequest.status ?? 'pending') === 'pending',
+  ).length
   const unreadCount = notifications.filter((notification) => notification.unread).length
   const today = new Intl.DateTimeFormat('nl-NL', {
     weekday: 'long',
@@ -78,6 +124,7 @@ function Portal() {
   const logout = () => {
     localStorage.removeItem('email')
     localStorage.removeItem('rememberMe')
+    sessionStorage.removeItem('email')
     window.location.assign('/login')
   }
 
@@ -273,12 +320,273 @@ function Portal() {
     </>
   )
 
+  const renderMyHelpRequestsPage = () => (
+    <HelpRequestOverview
+      embedded
+      noticeOverride={requestNotice}
+      onCreateRequest={() => setActivePage('hulpvraag-nieuw')}
+      onEditRequest={(id) => {
+        setEditingHelpRequestId(id)
+        setActivePage('hulpvraag-bewerken')
+      }}
+    />
+  )
+
+  const renderNewHelpRequestPage = () => (
+    <HelpRequestNew
+      embedded
+      onCancel={() => setActivePage('mijn-hulpvragen')}
+      onComplete={() => {
+        setRequestNotice('geplaatst')
+        setActivePage('mijn-hulpvragen')
+      }}
+    />
+  )
+
+  const renderEditHelpRequestPage = () => (
+    <HelpRequestEdit
+      id={editingHelpRequestId}
+      embedded
+      onCancel={() => setActivePage('mijn-hulpvragen')}
+      onComplete={() => {
+        setRequestNotice('bijgewerkt')
+        setActivePage('mijn-hulpvragen')
+      }}
+    />
+  )
+
+  const renderMatchRequestsPage = () => {
+    const filteredMatchRequests = matchRequests
+      .filter((matchRequest) => (
+        matchFilter === 'all' || (matchRequest.status ?? 'pending') === matchFilter
+      ))
+      .sort((first, second) => new Date(second.aangemaaktOp) - new Date(first.aangemaaktOp))
+
+    const statusLabels = {
+      pending: 'In afwachting',
+      approved: 'Goedgekeurd',
+      rejected: 'Afgewezen',
+    }
+
+    function decideMatchRequest(matchRequest, status) {
+      const updatedMatchRequest = updateMatchRequest(matchRequest.id, status)
+      if (!updatedMatchRequest) {
+        setMatchActionError(
+          status === 'approved'
+            ? 'Goedkeuren kan pas als leerling en peercoach hun contactgegevens hebben ingevuld.'
+            : 'De status is niet opgeslagen. Vernieuw de pagina en probeer het opnieuw.',
+        )
+        return
+      }
+
+      setMatchRequests((current) => current.map((item) => (
+        String(item.id) === String(matchRequest.id)
+          ? updatedMatchRequest
+          : item
+      )))
+      setMatchActionError('')
+      setMatchActionNotice(`Matchverzoek ${status === 'approved' ? 'goedgekeurd' : 'afgewezen'}.`)
+    }
+
+    function formatSubmittedDate(value) {
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return 'Datum onbekend'
+
+      return new Intl.DateTimeFormat('nl-NL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date)
+    }
+
+    function getRelatedHelpRequest(matchRequest) {
+      return helpRequests.find(
+        (request) => String(request.id) === String(matchRequest.helpRequestId),
+      )
+    }
+
+    const renderMatchActions = (matchRequest) => {
+      const helpRequest = getRelatedHelpRequest(matchRequest)
+      const canApprove = Boolean(
+        helpRequest?.contactgegevens?.naam &&
+        helpRequest.contactgegevens.email &&
+        matchRequest.coachContact?.naam &&
+        matchRequest.coachContact.email,
+      )
+
+      return (
+        <>
+          <div className="portal-match-actions">
+            <button
+              className="portal-secondary-button portal-match-actions__reject"
+              type="button"
+              onClick={() => decideMatchRequest(matchRequest, 'rejected')}
+            >
+              Afwijzen
+            </button>
+            <button
+              className="portal-match-actions__approve"
+              type="button"
+              onClick={() => decideMatchRequest(matchRequest, 'approved')}
+              disabled={!canApprove}
+              title={!canApprove ? 'Contactgegevens van leerling en peercoach zijn nodig.' : undefined}
+            >
+              Goedkeuren
+            </button>
+          </div>
+          {!canApprove && (
+            <p className="portal-match-action-hint">
+              Goedkeuren kan zodra de leerling- en peercoachcontactgegevens beschikbaar zijn.
+            </p>
+          )}
+        </>
+      )
+    }
+
+    return (
+      <>
+        <section className="portal-page-intro">
+          <p className="portal-eyebrow">PEERCOACH-BEGELEIDING</p>
+          <h1>Matchverzoeken beheren</h1>
+          <p>Bekijk de anonieme hulpvraag en motivatie van iedere peercoach en beslis over het verzoek.</p>
+        </section>
+
+        {matchActionError && <p className="portal-match-error" role="alert">{matchActionError}</p>}
+        {matchActionNotice && <p className="portal-match-success" role="status">{matchActionNotice}</p>}
+
+        <section className="portal-card portal-full-card portal-match-list" aria-label="Matchverzoeken">
+          <div className="portal-match-toolbar">
+            <div>
+              <p className="portal-card__eyebrow">INBOX</p>
+              <h2>Ingediende verzoeken <span className="portal-count">{pendingMatchCount} in afwachting</span></h2>
+            </div>
+            <label className="portal-match-filter">
+              <span>Toon status</span>
+              <select value={matchFilter} onChange={(event) => setMatchFilter(event.target.value)}>
+                <option value="all">Alle verzoeken</option>
+                <option value="pending">In afwachting</option>
+                <option value="approved">Goedgekeurd</option>
+                <option value="rejected">Afgewezen</option>
+              </select>
+            </label>
+          </div>
+
+          {filteredMatchRequests.length === 0 ? (
+            <p className="portal-empty">
+              {matchRequests.length === 0
+                ? 'Er zijn nog geen matchverzoeken ingediend.'
+                : 'Er zijn geen verzoeken met deze status.'}
+            </p>
+          ) : (
+            <div className="portal-match-cards">
+              {filteredMatchRequests.map((matchRequest) => {
+                const request = getRelatedHelpRequest(matchRequest)
+                const status = matchRequest.status ?? 'pending'
+
+                return (
+                  <article className="portal-match-card" key={matchRequest.id}>
+                    <div className="portal-match-card__top">
+                      <span className={`portal-match-status portal-match-status--${status}`}>
+                        {statusLabels[status] ?? statusLabels.pending}
+                      </span>
+                      <time dateTime={matchRequest.aangemaaktOp}>
+                        Ingediend op {formatSubmittedDate(matchRequest.aangemaaktOp)}
+                      </time>
+                    </div>
+                    <h3>{request?.titel ?? matchRequest.helpRequestTitle ?? 'Anonieme hulpvraag'}</h3>
+                    <p className="portal-match-card__label">Anonieme hulpvraag</p>
+                    <p className="portal-match-card__question">
+                      {request?.omschrijving ?? 'De oorspronkelijke hulpvraag is niet meer beschikbaar.'}
+                    </p>
+                    <p className="portal-match-card__label">Motivatie peercoach</p>
+                    <p className="portal-match-card__motivation">{matchRequest.motivation}</p>
+                    <div className="portal-match-card__footer">
+                      <button
+                        className="portal-text-button"
+                        type="button"
+                        onClick={() => setSelectedMatchRequestId(matchRequest.id)}
+                      >
+                        Bekijk verzoek <span aria-hidden="true">→</span>
+                      </button>
+                      {status === 'pending' && renderMatchActions(matchRequest)}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {selectedMatchRequest && (
+          <div
+            className="portal-match-backdrop"
+            onClick={() => setSelectedMatchRequestId(null)}
+          >
+            <section
+              className="portal-match-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="portal-match-dialog-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                className="portal-match-dialog__close"
+                type="button"
+                aria-label="Verzoek sluiten"
+                onClick={() => setSelectedMatchRequestId(null)}
+              >
+                ×
+              </button>
+              <p className="portal-card__eyebrow">ANONIEM MATCHVERZOEK</p>
+              <h2 id="portal-match-dialog-title">
+                {getRelatedHelpRequest(selectedMatchRequest)?.titel
+                  ?? selectedMatchRequest.helpRequestTitle
+                  ?? 'Anonieme hulpvraag'}
+              </h2>
+              <p className="portal-match-dialog__privacy">
+                Leerlingcontactgegevens blijven verborgen zolang dit verzoek niet is goedgekeurd.
+              </p>
+              <div className="portal-match-dialog__section">
+                <h3>Hulpvraag</h3>
+                <p>
+                  {getRelatedHelpRequest(selectedMatchRequest)?.omschrijving
+                    ?? 'De oorspronkelijke hulpvraag is niet meer beschikbaar.'}
+                </p>
+              </div>
+              <div className="portal-match-dialog__section">
+                <h3>Motivatie peercoach</h3>
+                <p>{selectedMatchRequest.motivation}</p>
+              </div>
+              <p className="portal-match-dialog__date">
+                Ingediend op {formatSubmittedDate(selectedMatchRequest.aangemaaktOp)}
+              </p>
+              <div className="portal-match-dialog__footer">
+                <span className={`portal-match-status portal-match-status--${selectedMatchRequest.status ?? 'pending'}`}>
+                  {statusLabels[selectedMatchRequest.status ?? 'pending'] ?? statusLabels.pending}
+                </span>
+                {(selectedMatchRequest.status ?? 'pending') === 'pending'
+                  && renderMatchActions(selectedMatchRequest)}
+              </div>
+            </section>
+          </div>
+        )}
+      </>
+    )
+  }
+
   const pageContent = {
     overzicht: renderOverview,
     rooster: renderSchedulePage,
     meldingen: renderNotificationsPage,
     instellingen: renderSettingsPage,
     account: renderAccountPage,
+    matchverzoeken: renderMatchRequestsPage,
+    'mijn-hulpvragen': renderMyHelpRequestsPage,
+    'hulpvraag-nieuw': renderNewHelpRequestPage,
+    'hulpvraag-bewerken': renderEditHelpRequestPage,
+    hulpvragen: () => <HelpRequests embedded />,
   }[activePage]()
 
   return (
@@ -289,21 +597,25 @@ function Portal() {
         </a>
         <p className="portal-nav-label">MENU</p>
         <nav className="portal-nav" aria-label="Portaal navigatie">
-          {navigation.map((item) => (
+          {portalNavigation.map((item) => (
             <button className={`portal-nav__item${activePage === item.id ? ' portal-nav__item--active' : ''}`} type="button" key={item.id} onClick={() => setActivePage(item.id)}>
               <span className="portal-nav__icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
               {item.id === 'meldingen' && unreadCount > 0 && <span className="portal-nav__count">{unreadCount}</span>}
+              {item.id === 'matchverzoeken' && pendingMatchCount > 0 && <span className="portal-nav__count">{pendingMatchCount}</span>}
             </button>
           ))}
-          <a className="portal-nav__item" href="/mijn-hulpvragen">
-            <span className="portal-nav__icon" aria-hidden="true">✎</span><span>Mijn hulpvragen</span>
-          </a>
-          <a className="portal-nav__item" href="/hulpvraag/nieuw">
-            <span className="portal-nav__icon" aria-hidden="true">＋</span><span>Hulpvraag plaatsen</span>
-          </a>
-          <a className="portal-nav__item" href="/hulpvragen">
-            <span className="portal-nav__icon" aria-hidden="true">↗</span><span>Open hulpvragen</span>
-          </a>
+          {helpNavigation.map((item) => (
+            <button
+              className={`portal-nav__item${activePage === item.id ? ' portal-nav__item--active' : ''}`}
+              type="button"
+              key={item.id}
+              aria-current={activePage === item.id ? 'page' : undefined}
+              onClick={() => setActivePage(item.id)}
+            >
+              <span className="portal-nav__icon" aria-hidden="true">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
         </nav>
         <div className="portal-sidebar__bottom">
           <div className="portal-help-card"><span aria-hidden="true">✦</span><strong>Kom je ergens niet uit?</strong><p>Vraag hulp aan je docent of mentor.</p></div>
@@ -314,7 +626,7 @@ function Portal() {
 
       <main className="portal-main">
         <header className="portal-topbar">
-          <div className="portal-breadcrumb"><span>PeerCoach</span><span aria-hidden="true">/</span><strong>{navigation.find((item) => item.id === activePage)?.label}</strong></div>
+          <div className="portal-breadcrumb"><span>PeerCoach</span><span aria-hidden="true">/</span><strong>{currentPageLabel}</strong></div>
           <div className="portal-topbar__user">
             <button className="portal-topbar__notification" type="button" aria-label={`${unreadCount} ongelezen notificaties`} onClick={() => setActivePage('meldingen')}>
               ♧{unreadCount > 0 && <span />}

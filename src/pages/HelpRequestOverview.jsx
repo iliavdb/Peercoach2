@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react'
-import { deleteHelpRequest, loadHelpRequests } from '../utils/helpRequestStorage.js'
+import {
+  deleteHelpRequest,
+  loadHelpRequests,
+  loadMatchRequests,
+} from '../utils/helpRequestStorage.js'
 
 const STATUS_META = {
   open: { label: 'Open', className: 'request-badge--open' },
   in_behandeling: { label: 'In behandeling', className: 'request-badge--progress' },
   afgerond: { label: 'Afgerond', className: 'request-badge--done' },
+}
+
+const MATCH_STATUS_META = {
+  pending: { label: 'In afwachting van docent', className: 'request-match__status--pending' },
+  approved: { label: 'Match goedgekeurd', className: 'request-match__status--approved' },
+  rejected: { label: 'Verzoek afgewezen', className: 'request-match__status--rejected' },
 }
 
 const NOTICES = {
@@ -24,8 +34,27 @@ function formatDate(value) {
   }).format(date)
 }
 
-export default function HelpRequestOverview() {
+function formatMatchDate(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Datum onbekend'
+
+  return new Intl.DateTimeFormat('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+export default function HelpRequestOverview({
+  embedded = false,
+  onCreateRequest,
+  onEditRequest,
+  noticeOverride,
+}) {
   const [requests, setRequests] = useState(loadHelpRequests)
+  const [matchRequests] = useState(loadMatchRequests)
   const [requestToDelete, setRequestToDelete] = useState(null)
   const [notice, setNotice] = useState(
     () => new URLSearchParams(window.location.search).get('melding'),
@@ -64,17 +93,23 @@ export default function HelpRequestOverview() {
   }
 
   return (
-    <section className="request-page" aria-labelledby="my-requests-title">
+    <section className={`request-page${embedded ? ' request-page--embedded' : ''}`} aria-labelledby="my-requests-title">
       <div className="request-page__heading request-page__heading--actions">
         <div>
           <p className="request-eyebrow">OVERZICHT</p>
           <h1 id="my-requests-title">Mijn hulpvragen</h1>
           <p>Volg de status van je vragen. Open vragen zijn zichtbaar voor peercoaches.</p>
         </div>
-        <a className="request-button request-button--primary" href="/hulpvraag/nieuw">+ Nieuwe hulpvraag</a>
+        {onCreateRequest ? (
+          <button className="request-button request-button--primary" type="button" onClick={onCreateRequest}>+ Nieuwe hulpvraag</button>
+        ) : (
+          <a className="request-button request-button--primary" href="/hulpvraag/nieuw">+ Nieuwe hulpvraag</a>
+        )}
       </div>
 
-      {notice && NOTICES[notice] && <p className="request-notice" role="status">{NOTICES[notice]}</p>}
+      {(noticeOverride || notice) && NOTICES[noticeOverride || notice] && (
+        <p className="request-notice" role="status">{NOTICES[noticeOverride || notice]}</p>
+      )}
       {deleteError && <p className="request-alert" role="alert">{deleteError}</p>}
 
       {sortedRequests.length === 0 ? (
@@ -82,7 +117,11 @@ export default function HelpRequestOverview() {
           <span aria-hidden="true">✦</span>
           <h2>Je hebt nog geen hulpvragen</h2>
           <p>Plaats je eerste vraag en een peercoach kan met je meedenken.</p>
-          <a className="request-button request-button--primary" href="/hulpvraag/nieuw">Nu een hulpvraag plaatsen</a>
+          {onCreateRequest ? (
+            <button className="request-button request-button--primary" type="button" onClick={onCreateRequest}>Nu een hulpvraag plaatsen</button>
+          ) : (
+            <a className="request-button request-button--primary" href="/hulpvraag/nieuw">Nu een hulpvraag plaatsen</a>
+          )}
         </div>
       ) : (
         <div className="request-list">
@@ -102,9 +141,44 @@ export default function HelpRequestOverview() {
                 <h2>{request.titel}</h2>
                 <p className="request-card__description">{request.omschrijving}</p>
                 <p className="request-card__date">Geplaatst op {formatDate(request.aangemaaktOp)}</p>
+                {matchRequests.filter((matchRequest) => matchRequest.helpRequestId === request.id).length > 0 && (
+                  <section className="request-match-list" aria-label="Ontvangen matchverzoeken">
+                    <h3>Matchverzoeken</h3>
+                    {matchRequests
+                      .filter((matchRequest) => matchRequest.helpRequestId === request.id)
+                      .map((matchRequest) => (
+                        <article className="request-match" key={matchRequest.id}>
+                          <p className={`request-match__status ${MATCH_STATUS_META[matchRequest.status ?? 'pending']?.className ?? MATCH_STATUS_META.pending.className}`}>
+                            {MATCH_STATUS_META[matchRequest.status ?? 'pending']?.label ?? MATCH_STATUS_META.pending.label}
+                          </p>
+                          <p>{matchRequest.motivation}</p>
+                          <time dateTime={matchRequest.aangemaaktOp}>
+                            Ontvangen op {formatMatchDate(matchRequest.aangemaaktOp)}
+                          </time>
+                          {(matchRequest.status ?? 'pending') === 'approved' && matchRequest.coachContact && (
+                            <div className="request-match__contact">
+                              <strong>Peercoach-contact</strong>
+                              <span>{matchRequest.coachContact.naam}</span>
+                              <a href={`mailto:${matchRequest.coachContact.email}`}>{matchRequest.coachContact.email}</a>
+                              {matchRequest.coachContact.beschikbaarheid && (
+                                <span>Voorstel: {matchRequest.coachContact.beschikbaarheid}</span>
+                              )}
+                            </div>
+                          )}
+                          {matchRequest.status === 'rejected' && (
+                            <p className="request-match__closed">Er is geen match ontstaan.</p>
+                          )}
+                        </article>
+                      ))}
+                  </section>
+                )}
                 {canEdit ? (
                   <div className="request-card__actions">
-                    <a className="request-button request-button--secondary" href={`/hulpvraag/${encodeURIComponent(request.id)}/bewerk`}>Bewerken</a>
+                    {onEditRequest ? (
+                      <button className="request-button request-button--secondary" type="button" onClick={() => onEditRequest(request.id)}>Bewerken</button>
+                    ) : (
+                      <a className="request-button request-button--secondary" href={`/hulpvraag/${encodeURIComponent(request.id)}/bewerk`}>Bewerken</a>
+                    )}
                     <button className="request-button request-button--danger" type="button" onClick={() => setRequestToDelete(request)}>Verwijderen</button>
                   </div>
                 ) : (

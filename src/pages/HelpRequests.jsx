@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import logo from '../assets/logo.png'
-import { loadHelpRequests } from '../utils/helpRequestStorage.js'
+import {
+  loadHelpRequests,
+  loadMatchRequests,
+  saveMatchRequest as storeMatchRequest,
+} from '../utils/helpRequestStorage.js'
 import './HelpRequests.css'
 
 const CATEGORIES = [
@@ -20,6 +24,11 @@ const CATEGORY_STYLES = {
   Loopbaan: { icon: '➜', color: 'orange' },
 }
 
+const MATCH_STATUS_LABELS = {
+  pending: 'In afwachting van docent',
+  approved: 'Match goedgekeurd',
+  rejected: 'Verzoek afgewezen',
+}
 
 const OPEN_HELP_REQUESTS = [
   {
@@ -119,18 +128,23 @@ const LockIcon = ({ size = 14 }) => (
   </svg>
 )
 
-function HelpRequests() {
+function HelpRequests({ embedded = false }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Alle vragen')
   const [selectedRequest, setSelectedRequest] = useState(null)
-  const [matchedIds, setMatchedIds] = useState([])
+  const [matchRequests, setMatchRequests] = useState(loadMatchRequests)
+  const [motivation, setMotivation] = useState('')
+  const [coachContact, setCoachContact] = useState({ naam: '', email: '', beschikbaarheid: '' })
+  const [matchError, setMatchError] = useState('')
   const [studentRequests] = useState(loadHelpRequests)
+  const MainContent = embedded ? 'div' : 'main'
 
   const allRequests = [
     ...studentRequests
       .filter((request) => request.status === 'open')
       .map((request) => ({
         id: `student-${request.id}`,
+        sourceId: request.id,
         category: 'Studie & vakken',
         title: request.titel,
         summary: request.omschrijving,
@@ -143,7 +157,7 @@ function HelpRequests() {
         wanted: request.taal ? `Hulp bij ${request.taal}` : 'Uitleg en samen oefenen',
         isNew: true,
       })),
-    ...OPEN_HELP_REQUESTS,
+    ...OPEN_HELP_REQUESTS.map((request) => ({ ...request, sourceId: request.id })),
   ]
 
   useEffect(() => {
@@ -167,39 +181,83 @@ function HelpRequests() {
     return matchesCategory && matchesQuery
   })
 
-  const selectedIsMatched = selectedRequest ? matchedIds.includes(selectedRequest.id) : false
-
-  const closeDialog = () => setSelectedRequest(null)
-
-  const matchRequest = () => {
-    if (!selectedRequest) return
-    setMatchedIds((current) =>
-      current.includes(selectedRequest.id) ? current : [...current, selectedRequest.id],
+  const selectedMatchRequest = selectedRequest
+    ? matchRequests.find(
+      (matchRequest) => String(matchRequest.helpRequestId) === String(selectedRequest.sourceId),
     )
+    : null
+  const selectedStudentRequest = selectedRequest
+    ? studentRequests.find(
+      (request) => String(request.id) === String(selectedRequest.sourceId),
+    )
+    : null
+
+  const closeDialog = () => {
+    setSelectedRequest(null)
+    setMotivation('')
+    setCoachContact({ naam: '', email: '', beschikbaarheid: '' })
+    setMatchError('')
+  }
+
+  const matchRequest = (event) => {
+    event.preventDefault()
+    if (!selectedRequest) return
+
+    const cleanedMotivation = motivation.trim()
+    const cleanedCoachContact = {
+      naam: coachContact.naam.trim(),
+      email: coachContact.email.trim(),
+      beschikbaarheid: coachContact.beschikbaarheid.trim(),
+    }
+    if (
+      !cleanedMotivation ||
+      !cleanedCoachContact.naam ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedCoachContact.email)
+    ) {
+      setMatchError('Vul je motivatie, naam en een geldig e-mailadres in.')
+      return
+    }
+
+    const savedMatchRequest = storeMatchRequest({
+      helpRequestId: selectedRequest.sourceId,
+      helpRequestTitle: selectedRequest.title,
+      motivation: cleanedMotivation,
+      coachContact: cleanedCoachContact,
+    })
+
+    if (!savedMatchRequest) {
+      setMatchError('Indienen is niet gelukt. Controleer de beschikbare opslagruimte en probeer het opnieuw.')
+      return
+    }
+
+    setMatchRequests((current) => [...current, savedMatchRequest])
+    setMatchError('')
   }
 
   return (
-    <div className="help-standalone">
-      <header className="help-topbar">
-        <a className="help-brand" href="/portaal" aria-label="PeerCoach, naar het portaal">
-          <img src={logo} alt="" />
-          <span>
-            <strong>PeerCoach</strong>
-            <small>Techniek College Rotterdam</small>
-          </span>
-        </a>
-        <div className="help-topbar__actions">
-          <span className="help-topbar__role">
-            <LockIcon size={12} />
-            Peercoach-weergave
-          </span>
-          <a className="help-topbar__link" href="/portaal">
-            Naar het portaal
+    <div className={`help-standalone${embedded ? ' help-standalone--embedded' : ''}`}>
+      {!embedded && (
+        <header className="help-topbar">
+          <a className="help-brand" href="/portaal" aria-label="PeerCoach, naar het portaal">
+            <img src={logo} alt="" />
+            <span>
+              <strong>PeerCoach</strong>
+              <small>Techniek College Rotterdam</small>
+            </span>
           </a>
-        </div>
-      </header>
+          <div className="help-topbar__actions">
+            <span className="help-topbar__role">
+              <LockIcon size={12} />
+              Peercoach-weergave
+            </span>
+            <a className="help-topbar__link" href="/portaal">
+              Naar het portaal
+            </a>
+          </div>
+        </header>
+      )}
 
-      <main className="help-main">
+      <MainContent className={`help-main${embedded ? ' help-main--embedded' : ''}`}>
         <section className="help-intro">
           <p className="help-eyebrow">ALS PEERCOACH</p>
           <h1>Open hulpvragen</h1>
@@ -276,7 +334,10 @@ function HelpRequests() {
         <div className="help-grid">
           {filteredRequests.map((request) => {
             const style = CATEGORY_STYLES[request.category]
-            const isMatched = matchedIds.includes(request.id)
+            const existingMatchRequest = matchRequests.find(
+              (matchRequest) => String(matchRequest.helpRequestId) === String(request.sourceId),
+            )
+            const isMatched = Boolean(existingMatchRequest)
 
             return (
               <article className={`help-card${isMatched ? ' help-card--matched' : ''}`} key={request.id}>
@@ -309,8 +370,9 @@ function HelpRequests() {
                 </div>
 
                 {isMatched && (
-                  <p className="help-card__matched-note">
-                    <span aria-hidden="true">✓</span> Jij hebt aangegeven deze vraag op te pakken
+                  <p className={`help-card__matched-note${existingMatchRequest.status === 'rejected' ? ' help-card__matched-note--rejected' : ''}`}>
+                    <span aria-hidden="true">{existingMatchRequest.status === 'rejected' ? '×' : '✓'}</span>{' '}
+                    {MATCH_STATUS_LABELS[existingMatchRequest.status] ?? MATCH_STATUS_LABELS.pending}
                   </p>
                 )}
               </article>
@@ -378,20 +440,44 @@ function HelpRequests() {
               <strong>{selectedRequest.wanted}</strong>
             </div>
 
-            {selectedIsMatched ? (
+            {selectedMatchRequest ? (
               <>
-                <div className="help-dialog__success" role="status">
+                <div
+                  className={`help-dialog__success${selectedMatchRequest.status === 'rejected' ? ' help-dialog__success--rejected' : ''}`}
+                  role="status"
+                >
                   <span className="help-dialog__success-icon" aria-hidden="true">
-                    ✓
+                    {selectedMatchRequest.status === 'rejected' ? '×' : '✓'}
                   </span>
                   <div>
-                    <strong>Top, je pakt deze vraag op!</strong>
+                    <strong>{MATCH_STATUS_LABELS[selectedMatchRequest.status ?? 'pending']}</strong>
                     <p>
-                      De leerling krijgt een melding dat een peercoach wil helpen. Jullie namen
-                      worden pas zichtbaar nadat de match is bevestigd.
+                      {selectedMatchRequest.status === 'approved'
+                        ? 'De docent heeft het verzoek goedgekeurd. De contactgegevens van de leerling zijn nu beschikbaar.'
+                        : selectedMatchRequest.status === 'rejected'
+                          ? 'Er is geen match ontstaan. De leerlinggegevens blijven verborgen.'
+                          : 'Je verzoek is opgeslagen. De contactgegevens van de leerling blijven verborgen tot goedkeuring.'}
                     </p>
                   </div>
                 </div>
+                {selectedMatchRequest.status === 'approved' && selectedStudentRequest?.contactgegevens && (
+                  <section className="help-match-contact" aria-label="Leerlinggegevens na goedkeuring">
+                    <h3>Gegevens om de begeleiding te starten</h3>
+                    <p><strong>Leerling:</strong> {selectedStudentRequest.contactgegevens.naam}</p>
+                    <p>
+                      <strong>E-mail:</strong>{' '}
+                      <a href={`mailto:${selectedStudentRequest.contactgegevens.email}`}>
+                        {selectedStudentRequest.contactgegevens.email}
+                      </a>
+                    </p>
+                    {selectedStudentRequest.contactgegevens.beschikbaarheid && (
+                      <p><strong>Beschikbaarheid:</strong> {selectedStudentRequest.contactgegevens.beschikbaarheid}</p>
+                    )}
+                    {selectedMatchRequest.coachContact?.beschikbaarheid && (
+                      <p><strong>Jouw voorgestelde moment:</strong> {selectedMatchRequest.coachContact.beschikbaarheid}</p>
+                    )}
+                  </section>
+                )}
                 <button type="button" className="help-dialog__primary" onClick={closeDialog}>
                   Sluiten
                 </button>
@@ -399,22 +485,76 @@ function HelpRequests() {
             ) : (
               <>
                 <p className="help-dialog__privacy">
-                  <LockIcon size={12} /> De leerling blijft anoniem tot jullie matchen.
+                  <LockIcon size={12} /> De hulpvraag is anoniem. Vertel waarom jij hierbij kunt helpen.
                 </p>
-                <div className="help-dialog__actions">
-                  <button type="button" className="help-dialog__secondary" onClick={closeDialog}>
-                    Misschien later
-                  </button>
-                  <button type="button" className="help-dialog__primary" onClick={matchRequest}>
-                    Ik wil deze vraag oppakken
-                  </button>
-                </div>
+                <form className="help-match-form" onSubmit={matchRequest}>
+                  <label htmlFor="match-motivation">Waarom ben jij geschikt om te helpen? <span aria-hidden="true">*</span></label>
+                  <textarea
+                    id="match-motivation"
+                    value={motivation}
+                    onChange={(event) => {
+                      setMotivation(event.target.value)
+                      setMatchError('')
+                    }}
+                    placeholder="Beschrijf kort je ervaring of hoe jij met deze vraag kunt meedenken."
+                    maxLength={1000}
+                    required
+                    aria-invalid={Boolean(matchError)}
+                    aria-describedby={matchError ? 'match-motivation-error' : undefined}
+                  />
+                  <label htmlFor="match-coach-name">Jouw naam <span aria-hidden="true">*</span></label>
+                  <input
+                    id="match-coach-name"
+                    type="text"
+                    autoComplete="name"
+                    value={coachContact.naam}
+                    maxLength={100}
+                    required
+                    onChange={(event) => {
+                      setCoachContact((current) => ({ ...current, naam: event.target.value }))
+                      setMatchError('')
+                    }}
+                  />
+                  <label htmlFor="match-coach-email">Jouw e-mailadres <span aria-hidden="true">*</span></label>
+                  <input
+                    id="match-coach-email"
+                    type="email"
+                    autoComplete="email"
+                    value={coachContact.email}
+                    maxLength={254}
+                    required
+                    onChange={(event) => {
+                      setCoachContact((current) => ({ ...current, email: event.target.value }))
+                      setMatchError('')
+                    }}
+                  />
+                  <label htmlFor="match-coach-availability">Voorstel voor een eerste afspraak <span>(optioneel)</span></label>
+                  <input
+                    id="match-coach-availability"
+                    type="text"
+                    value={coachContact.beschikbaarheid}
+                    placeholder="Bijvoorbeeld: donderdag na de les"
+                    maxLength={160}
+                    onChange={(event) => {
+                      setCoachContact((current) => ({ ...current, beschikbaarheid: event.target.value }))
+                    }}
+                  />
+                  {matchError && <p className="help-match-form__error" id="match-motivation-error" role="alert">{matchError}</p>}
+                  <div className="help-dialog__actions">
+                    <button type="button" className="help-dialog__secondary" onClick={closeDialog}>
+                      Misschien later
+                    </button>
+                    <button type="submit" className="help-dialog__primary">
+                      Matchverzoek indienen
+                    </button>
+                  </div>
+                </form>
               </>
             )}
           </div>
         </div>
       )}
-      </main>
+      </MainContent>
     </div>
   )
 }

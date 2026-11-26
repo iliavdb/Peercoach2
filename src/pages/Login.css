@@ -95,6 +95,45 @@
   box-shadow: 0 0 0 4px rgba(240, 106, 59, 0.12);
 }
 
+.login-form__password {
+  position: relative;
+}
+
+.login-form__password input {
+  padding-right: 52px;
+}
+
+.login-form .login-form__password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 9px 9px 0;
+  background: transparent;
+  color: #788696;
+  cursor: pointer;
+  box-shadow: none;
+  transform: none;
+}
+
+.login-form .login-form__password-toggle:hover {
+  background: transparent;
+  color: var(--color-primary-dark);
+  box-shadow: none;
+  transform: none;
+}
+
+.login-form .login-form__password-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -4px;
+}
+
 .login-form button {
   display: flex;
   width: 100%;

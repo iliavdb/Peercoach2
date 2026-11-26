@@ -1,12 +1,13 @@
 import HelpRequestForm from '../components/HelpRequestForm.jsx'
 import { getHelpRequest, updateHelpRequest } from '../utils/helpRequestStorage.js'
 
-export default function HelpRequestEdit({ id }) {
+export default function HelpRequestEdit({ id, embedded = false, onComplete, onCancel }) {
   const request = getHelpRequest(id)
+  const pageClassName = `request-page${embedded ? ' request-page--embedded' : ''}`
 
   if (!request || request.status === 'afgerond') {
     return (
-      <section className="request-page">
+      <section className={pageClassName}>
         <div className="request-panel request-empty">
           <h1>{request ? 'Deze vraag is afgerond' : 'Hulpvraag niet gevonden'}</h1>
           <p>
@@ -14,7 +15,11 @@ export default function HelpRequestEdit({ id }) {
               ? 'Afgeronde hulpvragen kunnen niet meer worden bewerkt.'
               : 'Deze vraag bestaat niet meer of is verwijderd.'}
           </p>
-          <a className="request-button request-button--primary" href="/mijn-hulpvragen">Terug naar mijn hulpvragen</a>
+          {onCancel ? (
+            <button className="request-button request-button--primary" type="button" onClick={onCancel}>Terug naar mijn hulpvragen</button>
+          ) : (
+            <a className="request-button request-button--primary" href="/mijn-hulpvragen">Terug naar mijn hulpvragen</a>
+          )}
         </div>
       </section>
     )
@@ -22,12 +27,18 @@ export default function HelpRequestEdit({ id }) {
 
   function saveChanges(changes) {
     if (!updateHelpRequest(request.id, changes)) return false
-    window.location.assign('/mijn-hulpvragen?melding=bijgewerkt')
+
+    if (onComplete) {
+      onComplete()
+    } else {
+      window.location.assign('/mijn-hulpvragen?melding=bijgewerkt')
+    }
+
     return true
   }
 
   return (
-    <section className="request-page" aria-labelledby="edit-request-title">
+    <section className={pageClassName} aria-labelledby="edit-request-title">
       <div className="request-page__heading">
         <p className="request-eyebrow">HULPVRAGEN</p>
         <h1 id="edit-request-title">Hulpvraag bewerken</h1>
@@ -38,6 +49,7 @@ export default function HelpRequestEdit({ id }) {
           initialValue={request}
           buttonText="Wijzigingen opslaan"
           onSave={saveChanges}
+          onCancel={onCancel}
         />
       </div>
     </section>
